@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registro - EcoReto</title>
+
+    <link rel="stylesheet" href="../css/style.css">
+
+</head>
+
+<body class="registro">
+
+<div class="contenedor-formulario">
+
+    <div class="tarjeta-registro">
+
+        <h1>
+            Únete a EcoReto 🌱
+        </h1>
+
+        <p>
+            Crea tu cuenta y empieza a cuidar el planeta.
+        </p>
+
+        <input 
+        id="nombre"
+        type="text"
+        placeholder="Nombre">
+
+        <input 
+        id="correo"
+        type="email"
+        placeholder="Correo electrónico">
+
+        <input 
+        id="password"
+        type="password"
+        placeholder="Contraseña">
+
+        <button onclick="registrarUsuario()">
+            Registrarse
+        </button>
+
+        <a href="login.html">
+            Ya tengo cuenta
+        </a>
+
+    </div>
+
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script src="../js/script.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoReto</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+<header class="barra">
+    <div class="logo">
+        <span>Eco</span>Reto
+    </div>
+
+    <nav id="menuPrincipal">
+        <button data-seccion="inicio" onclick="mostrarSeccion('inicio')">Inicio</button>
+        <button data-seccion="publicar" onclick="mostrarSeccion('publicar')">Publicar</button>
+        <button data-seccion="retos" onclick="mostrarSeccion('retos')">Retos</button>
+        <button data-seccion="ranking" onclick="mostrarSeccion('ranking')">Ranking</button>
+        <button data-seccion="rangos" onclick="mostrarSeccion('rangos')">Rangos</button>
+        <button data-seccion="perfil" onclick="mostrarSeccion('perfil')">Perfil</button>
+    </nav>
+
+    <button class="botonPerfil" onclick="mostrarSeccion('perfil')">
+        <span>👤</span>
+        <span id="nombreUsuario">Usuario</span>
+    </button>
+</header>
+
+<main id="contenido">
+
+    <!-- Sección Inicio -->
+    <section class="dashboard" id="seccion-inicio">
+        <div class="hero">
+            <div class="heroTexto">
+                <span class="etiqueta">🌿 TU PROGRESO</span>
+                <h1>Hola, <span id="saludoNombre">Usuario</span> 👋</h1>
+                <p>Cada pequeña acción puede hacer una gran diferencia.</p>
+                <button class="botonPrincipal" onclick="mostrarSeccion('retos')">Ver retos →</button>
+            </div>
+            <div class="heroDecoracion">
+                <div class="circuloGrande">🌱</div>
+                <div class="hoja hoja1">🍃</div>
+                <div class="hoja hoja2">🌿</div>
+            </div>
+        </div>
+
+        <section class="zonaEstadisticas">
+            <div class="tituloSeccion">
+                <div>
+                    <span>MI ACTIVIDAD</span>
+                    <h2>Tu progreso</h2>
+                </div>
+            </div>
+            <div class="estadisticas" style="display: flex; justify-content: center; align-items: center; gap: 100px; width: 100%;">
+                <div class="stat puntos">
+                    <div class="iconoStat">⭐</div>
+                    <div>
+                        <small>PUNTOS</small>
+                        <strong id="puntosUsuario">0</strong>
+                    </div>
+                </div>
+                <div class="stat rango">
+                    <div class="iconoStat">🏆</div>
+                    <div>
+                        <small>RANGO</small>
+                        <strong id="rangoUsuario">Semilla</strong>
+                    </div>
+                </div>
+                <div class="stat acciones">
+                    <div class="iconoStat">🌱</div>
+                    <div>
+                        <small>ACCIONES</small>
+                        <strong id="accionesUsuario">0</strong>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="seccionRetos">
+            <div class="tituloFila">
+                <div>
+                    <span>PARTICIPA</span>
+                    <h2>Retos de esta semana</h2>
+                </div>
+                <button onclick="mostrarSeccion('retos')">Ver todos →</button>
+            </div>
+            <div class="retosCards" id="retosInicio">
+                <article class="retoCard azul">
+                    <div class="retoIcono">💧</div>
+                    <span>AGUA</span>
+                    <h3>Cuida el agua</h3>
+                    <p>Evita desperdiciar agua durante el día.</p>
+                    <div class="retoAbajo">
+                        <b>+10 ⭐</b>
+                        <button>→</button>
+                    </div>
+                </article>
+                <article class="retoCard verde">
+                    <div class="retoIcono">♻️</div>
+                    <span>RECICLAJE</span>
+                    <h3>Recicla algo hoy</h3>
+                    <p>Separa correctamente tus residuos.</p>
+                    <div class="retoAbajo">
+                        <b>+15 ⭐</b>
+                        <button>→</button>
+                    </div>
+                </article>
+                <article class="retoCard naranja">
+                    <div class="retoIcono">🌳</div>
+                    <span>NATURALEZA</span>
+                    <h3>Ayuda a la naturaleza</h3>
+                    <p>Realiza una acción para cuidar tu entorno.</p>
+                    <div class="retoAbajo">
+                        <b>+20 ⭐</b>
+                        <button>→</button>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="actividad">
+            <div class="tituloFila">
+                <div>
+                    <span>HISTORIAL</span>
+                    <h2>Últimas acciones</h2>
+                </div>
+                <button onclick="mostrarSeccion('perfil')">Ver perfil →</button>
+            </div>
+            <div id="actividadInicio" class="actividadLista">
+                <div class="actividadVacia">
+                    <div>🌱</div>
+                    <h3>Todavía no tienes acciones</h3>
+                    <p>Completa un reto o publica una acción ecológica.</p>
+                    <button class="botonPrincipal" onclick="mostrarSeccion('retos')">Comenzar</button>
+                </div>
+            </div>
+        </section>
+    </section>
+
+</main>
+
+<footer class="pie">
+    <div>
+        <strong>EcoReto</strong>
+        <span>Pequeñas acciones. Grandes cambios. 🌎</span>
+    </div>
+    <div class="pieLinks">
+        <button onclick="mostrarSeccion('nosotros')">Nosotros</button>
+        <button onclick="mostrarSeccion('contacto')">Contacto</button>
+    </div>
+</footer>
+
+<!-- Modal flotante para inspeccionar la carta de cualquier usuario del ranking -->
+<div id="modalCartaUsuario" class="modal-overlay" onclick="cerrarModal(event)">
+    <div class="carta-pokemon modal-tarjeta">
+        <!-- Contenido inyectado por JavaScript -->
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script src="js/script.js"></script>
+<script>cargarUsuario();</script>
+
+</body>
+
+</html>
