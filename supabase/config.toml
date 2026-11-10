@@ -1,0 +1,10 @@
+project_id = "lycxdyckvedinhizrkkc"
+
+[functions.diagnosticar-error]
+verify_jwt = true
+
+[functions.verificar-evidencia]
+verify_jwt = true
+
+[functions.notificar-institucion]
+verify_jwt = false

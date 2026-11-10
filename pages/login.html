@@ -8,7 +8,7 @@
 
     <title>Iniciar sesión - EcoReto</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v=20261110c">
 
 </head>
 
@@ -32,37 +32,95 @@
         </p>
 
 
-        <input
-        id="correoLogin"
-        type="email"
-        placeholder="Correo electrónico">
+        <label class="campo-registro-label" for="correoLogin">Correo electrónico</label>
+        <input id="correoLogin" type="email" inputmode="email" enterkeyhint="next" placeholder="nombre@correo.com" autocomplete="email" required>
+        <p class="nota-acceso-identidad">Entra con el correo y la contraseña de tu cuenta.</p>
 
 
+        <label class="campo-registro-label" for="passwordLogin">Contraseña</label>
         <input
         id="passwordLogin"
         type="password"
-        placeholder="Contraseña">
+        placeholder="Contraseña"
+        autocomplete="current-password">
 
 
         <button onclick="iniciarSesion()">
           Iniciar sesión
         </button>
 
+        <div class="separador-acceso"><span>o</span></div>
+        <button type="button" id="btnGoogleLogin" class="boton-google" onclick="iniciarConGoogle('login')"><span aria-hidden="true">G</span> Continuar con Google</button>
+        <p id="estadoGoogleLogin" class="registro-ranking-estado" role="status" aria-live="polite"></p>
+
+        <p style="margin-top: 15px; text-align: center;">
+            <a href="#" onclick="recuperarContrasena(); return false;" style="color: #4CAF50; text-decoration: underline; cursor: pointer;">
+                ¿Olvidaste tu contraseña?
+            </a>
+        </p>
 
         <a href="registro.html">
             Crear una cuenta
         </a>
+        <div class="acceso-institucional-card">
+            <p>¿Tu colegio o institución quiere tener su propio ranking?</p>
+            <a class="enlace-institucion" href="institucion.html">Crear cuenta institucional y solicitar un ranking →</a>
+        </div>
 
+        <!-- Formulario para nueva contraseña -->
+        <section id="seccionNuevaPassword" class="seccion-nueva-password" hidden aria-labelledby="tituloNuevaPassword">
+            <h2 id="tituloNuevaPassword">Crea una contraseña nueva</h2>
+            <p>Usa al menos 6 caracteres e incluye letras y números.</p>
+            <label class="campo-registro-label" for="nuevaPasswordInput">Nueva contraseña</label>
+            <input type="password" id="nuevaPasswordInput" placeholder="Nueva contraseña" autocomplete="new-password" minlength="6" required>
+            <label class="campo-registro-label" for="confirmarNuevaPasswordInput">Confirma la nueva contraseña</label>
+            <input type="password" id="confirmarNuevaPasswordInput" placeholder="Vuelve a escribir la contraseña" autocomplete="new-password" minlength="6" required>
+            <button type="button" onclick="guardarNuevaPassword()">Guardar contraseña nueva</button>
+            <p id="estadoNuevaPassword" role="status" aria-live="polite"></p>
+        </section>
 
     </div>
-
-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
-<script src="../js/script.js"></script>
+<script src="../js/script.js?v=20261110c"></script>
 
+<div id="modalRecuperar" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000;">
+        <div style="background: white; padding: 30px; border-radius: 12px; width: 100%; max-width: 400px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); text-align: center;">
+            <h3 style="margin-bottom: 15px; color: #333;">Recuperar contraseña</h3>
+            <p style="font-size: 14px; color: #666; margin-bottom: 20px;">Ingresa tu correo electrónico y te enviaremos las instrucciones.</p>
+
+            <input type="email" id="correoRecuperar" placeholder="Correo electrónico" autocomplete="email" style="width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;">
+
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button type="button" onclick="cerrarModalRecuperar()" style="padding: 10px 15px; background: #ccc; border: none; border-radius: 6px; cursor: pointer;">Cancelar</button>
+                <button type="button" onclick="enviarCorreoRecuperacion()" style="padding: 10px 15px; background: #2e7d32; color: white; border: none; border-radius: 6px; cursor: pointer;">Enviar</button>
+            </div>
+        </div>
+    </div>
+    <button type="button" class="boton-ayuda" onclick="abrirAyuda()" aria-label="Abrir ayuda">¿Ayuda?</button>
+    <dialog id="dialogoAyuda" class="dialogo-ayuda">
+        <button type="button" class="cerrar-ayuda" onclick="cerrarAyuda()" aria-label="Cerrar ayuda">×</button>
+        <h2>Ayuda de EcoReto 🌱</h2>
+        <p>Elige un tema para ver pasos concretos. Si algo no funciona, puedes enviar un reporte al equipo.</p>
+        <div class="ayuda-opciones">
+            <button type="button" onclick="responderAyuda('registro')">Cuenta y acceso</button>
+            <button type="button" onclick="responderAyuda('puntos')">Puntos y retos</button>
+            <button type="button" onclick="responderAyuda('ranking')">Rankings</button>
+            <button type="button" onclick="responderAyuda('error')">Tengo un error</button>
+        </div>
+        <p id="respuestaAyuda" role="status">Elige un tema para ver los pasos recomendados.</p>
+        <section class="ayuda-diagnostico" aria-label="Enviar reporte de error">
+            <h3>¿Necesitas soporte?</h3>
+            <label for="descripcionReporteAyuda">Describe el problema</label>
+            <textarea id="descripcionReporteAyuda" maxlength="1500" placeholder="Qué estabas haciendo y qué error apareció"></textarea>
+            <label for="capturaReporteAyuda">Adjunta una captura (PNG, JPG o WebP, hasta 5 MB)</label>
+            <input id="capturaReporteAyuda" type="file" accept="image/png,image/jpeg,image/webp">
+            <button type="button" onclick="enviarReporteAyuda()">Enviar reporte</button>
+            <p id="estadoReporteAyuda" role="status" aria-live="polite"></p>
+        </section>
+    </dialog>
 </body>
 
 </html>

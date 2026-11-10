@@ -8,7 +8,7 @@
 
     <title>Registro - EcoReto</title>
 
-    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/style.css?v=20261110c">
 
 </head>
 
@@ -26,28 +26,43 @@
             Crea tu cuenta y empieza a cuidar el planeta.
         </p>
 
-        <input 
-        id="nombre"
-        type="text"
-        placeholder="Nombre">
+        <form id="formRegistro" onsubmit="event.preventDefault(); registrarUsuario();">
+        <label class="campo-registro-label" for="nombre">Nombre para tu perfil</label>
+        <input id="nombre" type="text" placeholder="Tu nombre visible en el perfil" maxlength="60" autocomplete="name" required oninput="actualizarEstadoNombrePerfil()" aria-describedby="estadoNombrePerfil">
+        <p id="estadoNombrePerfil" class="registro-ranking-estado" role="status" aria-live="polite">Escribe el nombre que quieres mostrar en tu perfil.</p>
 
-        <input 
-        id="correo"
-        type="email"
-        placeholder="Correo electrónico">
+        <button type="button" id="sugerirNombrePerfil" class="registro-ranking-sugerir">Sugerirme un nombre disponible</button>
 
+        <label class="campo-registro-label" for="correo">Correo electrónico</label>
+        <input id="correo" type="email" inputmode="email" enterkeyhint="next" placeholder="nombre@correo.com" autocomplete="email" autocapitalize="none" required>
+        <p class="nota-acceso-identidad">Usa tu correo para crear y recuperar tu cuenta.</p>
+
+        <label class="campo-registro-label" for="password">Contraseña</label>
         <input 
         id="password"
         type="password"
-        placeholder="Contraseña">
+        placeholder="Contraseña"
+        autocomplete="new-password"
+        minlength="6"
+        required>
 
-        <button onclick="registrarUsuario()">
+        <button id="btnRegistro" type="submit">
             Registrarse
         </button>
+
+        <p id="estadoRegistro" class="registro-ranking-estado" role="status" aria-live="polite"></p>
+        </form>
+
+        <div class="separador-acceso"><span>o continúa con</span></div>
+        <button type="button" id="btnGoogleRegistro" class="boton-google" onclick="iniciarConGoogle('registro')"><span aria-hidden="true">G</span> Continuar con Google</button>
 
         <a href="login.html">
             Ya tengo cuenta
         </a>
+        <div class="acceso-institucional-card">
+            <p>¿Tu colegio o institución quiere tener su propio ranking?</p>
+            <a class="enlace-institucion" href="institucion.html">Crear cuenta institucional y solicitar un ranking →</a>
+        </div>
 
     </div>
 
@@ -56,7 +71,30 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../js/supabase.js"></script>
-<script src="../js/script.js"></script>
+    <script src="../js/script.js?v=20261110c"></script>
+
+<button type="button" class="boton-ayuda" onclick="abrirAyuda()" aria-label="Abrir ayuda">¿Ayuda?</button>
+<dialog id="dialogoAyuda" class="dialogo-ayuda">
+    <button type="button" class="cerrar-ayuda" onclick="cerrarAyuda()" aria-label="Cerrar ayuda">×</button>
+    <h2>Ayuda de EcoReto 🌱</h2>
+    <p>Elige un tema para ver pasos concretos. Si algo no funciona, puedes enviar un reporte al equipo.</p>
+    <div class="ayuda-opciones">
+        <button type="button" onclick="responderAyuda('registro')">Cuenta y acceso</button>
+        <button type="button" onclick="responderAyuda('puntos')">Puntos y retos</button>
+        <button type="button" onclick="responderAyuda('ranking')">Rankings</button>
+        <button type="button" onclick="responderAyuda('error')">Tengo un error</button>
+    </div>
+    <p id="respuestaAyuda" role="status">Elige un tema para ver los pasos recomendados.</p>
+    <section class="ayuda-diagnostico" aria-label="Enviar reporte de error">
+        <h3>¿Necesitas soporte?</h3>
+        <label for="descripcionReporteAyuda">Describe el problema</label>
+        <textarea id="descripcionReporteAyuda" maxlength="1500" placeholder="Qué estabas haciendo y qué error apareció"></textarea>
+        <label for="capturaReporteAyuda">Adjunta una captura (PNG, JPG o WebP, hasta 5 MB)</label>
+        <input id="capturaReporteAyuda" type="file" accept="image/png,image/jpeg,image/webp">
+        <button type="button" onclick="enviarReporteAyuda()">Enviar reporte</button>
+        <p id="estadoReporteAyuda" role="status" aria-live="polite"></p>
+    </section>
+</dialog>
 
 </body>
 

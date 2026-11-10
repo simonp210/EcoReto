@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Crea una cuenta institucional y solicita un ranking para tu comunidad en EcoReto.">
+    <title>Instituciones - EcoReto</title>
+    <link rel="stylesheet" href="../css/style.css?v=20261110c">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.5.3/dist/css/intlTelInput.css">
+</head>
+<body class="registro">
+<main class="contenedor-formulario">
+    <section class="tarjeta-registro tarjeta-institucion">
+        <a class="volver-registro volver-a-app" href="../app.html?demo=1&amp;vista=ranking">← Volver a EcoReto</a>
+        <span class="etiqueta">ESPACIO PARA INSTITUCIONES</span>
+        <h1>Tu institución en EcoReto</h1>
+        <p>Crea una cuenta institucional o inicia sesión. Después podrás solicitar y administrar el ranking de tu comunidad.</p>
+        <p class="portal-institucion-acceso-link">¿Ya tienes una cuenta institucional? <a href="portal-institucion.html#solicitar-ranking">Solicita un ranking para tu comunidad →</a></p>
+        <div class="selector-rol-institucion" role="group" aria-label="Tipo de participante">
+            <button type="button" id="opcionEstudiante" aria-pressed="false" onclick="seleccionarTipoInstitucion('estudiante')">Soy estudiante</button>
+            <button type="button" id="opcionRepresentante" aria-pressed="false" onclick="window.location.href='portal-institucion.html'">Crear cuenta institucional</button>
+        </div>
+        <section id="panelEstudiante" class="panel-tipo-institucion" hidden>
+            <h2>Entrar con código</h2>
+            <p>Escribe el código que te compartió tu institución. Tus compañeros verán el nombre de perfil de tu cuenta.</p>
+            <form id="formularioEstudianteInstitucion" onsubmit="event.preventDefault(); unirseRankingInstitucional();">
+                <label class="campo-registro-label" for="codigoEstudianteInstitucion">Código de la institución</label>
+                <input id="codigoEstudianteInstitucion" required maxlength="40" autocomplete="off" placeholder="Pega aquí el código">
+                <button type="submit">Entrar al ranking</button>
+                <p id="estadoEstudianteInstitucion" class="registro-ranking-estado" role="status" aria-live="polite"></p>
+            </form>
+            <p id="avisoCuentaEstudiante" class="nota-institucion">Si aún no tienes cuenta personal, te enviaremos al registro y aplicaremos el código al activar tu cuenta.</p>
+        </section>
+        <section id="panelRepresentante" class="panel-tipo-institucion" hidden>
+            <h2>Primero, crea tu cuenta institucional</h2>
+            <p>Cuando inicies sesión, podrás solicitar el ranking desde tu perfil.</p>
+            <a class="botonPrincipal portal-boton-enviar" href="portal-institucion.html">Crear o abrir cuenta institucional →</a>
+        </section>
+    </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.5.3/dist/js/intlTelInput.min.js"></script>
+<script src="../js/script.js?v=20261110c"></script>
+</body>
+</html>
+

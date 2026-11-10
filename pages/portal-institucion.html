@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Administra el ranking y consulta los avances de tu comunidad educativa en EcoReto.">
+    <title>Perfil institucional - EcoReto</title>
+    <link rel="stylesheet" href="../css/style.css?v=20261110c">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@29.5.3/dist/css/intlTelInput.css">
+</head>
+<body class="registro">
+<main class="contenedor-formulario portal-institucion-contenedor">
+    <section class="tarjeta-registro tarjeta-institucion portal-institucion-tarjeta">
+        <a class="volver-registro volver-a-app" href="institucion.html">← Opciones institucionales</a>
+        <span class="etiqueta">ESPACIO PARA INSTITUCIONES</span>
+        <h1>Cuenta institucional 🌿</h1>
+        <p>Crea tu cuenta institucional o inicia sesión. Después podrás solicitar y administrar el ranking de tu comunidad.</p>
+
+        <section id="portalAccesoInstitucional" class="portal-acceso-institucional">
+            <div class="portal-tabs" role="group" aria-label="Acceso institucional">
+                <button type="button" id="portalTabEntrar" class="activo" aria-pressed="true" onclick="cambiarModoPortalInstitucional('entrar')">Iniciar sesión institucional</button>
+                <button type="button" id="portalTabCrear" aria-pressed="false" onclick="cambiarModoPortalInstitucional('crear')">Crear cuenta institucional</button>
+            </div>
+            <form id="portalFormularioInstitucional" onsubmit="event.preventDefault(); enviarFormularioPortalInstitucional();">
+                <label class="campo-registro-label" for="portalCorreoInstitucional">Correo institucional</label>
+                <input id="portalCorreoInstitucional" type="email" required autocomplete="email" maxlength="254" placeholder="nombre@institucion.edu">
+                <div id="portalCamposCrear" hidden>
+                    <label class="campo-registro-label" for="portalPasswordInstitucional">Crea una contraseña</label>
+                    <input id="portalPasswordInstitucional" type="password" autocomplete="new-password" minlength="6" placeholder="Mínimo 6 caracteres">
+                    <label class="campo-registro-label" for="portalConfirmarPasswordInstitucional">Confirma la contraseña</label>
+                    <input id="portalConfirmarPasswordInstitucional" type="password" autocomplete="new-password" minlength="6" placeholder="Escríbela de nuevo">
+                </div>
+                <div id="portalCamposEntrar">
+                    <label class="campo-registro-label" for="portalPasswordAccesoInstitucional">Contraseña</label>
+                    <input id="portalPasswordAccesoInstitucional" type="password" autocomplete="current-password" required placeholder="Tu contraseña">
+                </div>
+                <button id="portalBotonEnviar" class="botonPrincipal portal-boton-enviar" type="submit">Iniciar sesión</button>
+                <p id="portalEstadoInstitucional" class="registro-ranking-estado" role="status" aria-live="polite"></p>
+                <button id="portalCambiarCuenta" type="button" class="btn-secundario" onclick="cerrarSesionPortalInstitucional()" hidden>Cerrar sesión y cambiar de cuenta</button>
+            </form>
+            <p class="portal-aviso-aprobacion">¿Aún no tienes cuenta? Elige <strong>Crear cuenta institucional</strong>. Desde tu cuenta podrás solicitar un ranking.</p>
+        </section>
+
+        <section id="portalSolicitudRanking" class="portal-solicitud-ranking" hidden>
+            <div class="portal-panel-cabecera"><div><span class="etiqueta">CUENTA INSTITUCIONAL ACTIVA</span><h2>Solicita un ranking</h2></div><button type="button" class="btn-secundario" onclick="cerrarSesionPortalInstitucional()">Cerrar sesión</button></div>
+            <p>Completa estos datos desde tu cuenta institucional. El equipo de EcoReto revisará la solicitud y te avisará cuando tenga una respuesta.</p>
+            <form id="formularioInstitucion" onsubmit="event.preventDefault(); enviarSolicitudInstitucion();">
+                <label class="campo-registro-label" for="institucionNombre">Nombre de la institución</label>
+                <input id="institucionNombre" required minlength="2" maxlength="140" autocomplete="organization" placeholder="Ejemplo: Colegio Ambiental del Norte">
+                <div class="institucion-campos-dobles">
+                    <div><label class="campo-registro-label" for="institucionPais">País</label><select id="institucionPais" required autocomplete="country-name"><option value="">Elige un país</option></select></div>
+                    <div><label class="campo-registro-label" for="institucionCiudad">Ciudad</label><input id="institucionCiudad" required maxlength="100" autocomplete="address-level2" list="ciudadesSugeridas" placeholder="Busca o escribe una ciudad"><datalist id="ciudadesSugeridas"></datalist></div>
+                </div>
+                <label class="campo-registro-label" for="institucionCorreo">Correo de esta cuenta institucional</label>
+                <input id="institucionCorreo" type="email" required maxlength="254" autocomplete="email" placeholder="nombre@institucion.edu">
+                <small class="nota-institucion">Usa el mismo correo con el que creaste esta cuenta. Allí enviaremos la respuesta y, si se aprueba, el código del ranking.</small>
+                <label class="campo-registro-label" for="institucionContacto">Tu nombre</label>
+                <input id="institucionContacto" required maxlength="100" autocomplete="name">
+                <label class="campo-registro-label" for="institucionCargo">Tu cargo en la institución</label>
+                <select id="institucionCargo" required onchange="actualizarCargoInstitucion()">
+                    <option value="">Elige tu cargo</option><option>Docente</option><option>Rector o rectora</option><option>Coordinación académica</option><option>Orientación escolar</option><option>Administración</option><option>Representante autorizado</option><option value="otro">Otro cargo</option>
+                </select>
+                <input id="institucionCargoOtro" maxlength="100" placeholder="Escribe tu cargo" autocomplete="off" hidden>
+                <label class="campo-registro-label" for="institucionTelefono">Teléfono de contacto (opcional)</label>
+                <input id="institucionTelefono" data-telefono-internacional type="tel" autocomplete="tel-national" placeholder="300 123 4567">
+                <label class="campo-registro-label" for="institucionMotivo">¿Cómo usaría tu institución EcoReto?</label>
+                <textarea id="institucionMotivo" required minlength="20" maxlength="1200" placeholder="Cuéntanos qué comunidad participará y qué actividades quieren organizar."></textarea>
+                <button type="submit">Enviar solicitud de ranking</button>
+                <p id="estadoSolicitudInstitucion" class="registro-ranking-estado" role="status" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <section id="portalPanelInstitucional" class="portal-panel-institucional" hidden aria-live="polite"></section>
+    </section>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../js/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@29.5.3/dist/js/intlTelInput.min.js"></script>
+<script src="../js/script.js?v=20261110c"></script>
+</body>
+</html>
