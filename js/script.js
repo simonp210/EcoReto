@@ -324,24 +324,31 @@ async function inicializarAplicacion() {
 
 function iniciarAvisoConectividad() {
     let aviso = document.getElementById("aviso-conectividad");
+    let cerradoPorUsuario = false;
     if (!aviso) {
         aviso = document.createElement("div");
         aviso.id = "aviso-conectividad";
         aviso.className = "aviso-conectividad";
         aviso.setAttribute("role", "status");
         aviso.setAttribute("aria-live", "polite");
+        aviso.innerHTML = '<span class="aviso-conectividad-texto"></span><button type="button" class="aviso-conectividad-cerrar" aria-label="Cerrar aviso de conexión">×</button>';
         document.body.appendChild(aviso);
     }
+    const textoAviso = aviso.querySelector(".aviso-conectividad-texto") || aviso;
+    aviso.querySelector(".aviso-conectividad-cerrar")?.addEventListener("click", () => {
+        cerradoPorUsuario = true;
+        aviso.hidden = true;
+    });
     const revisar = () => {
         const tipo = navigator.connection?.effectiveType;
         const enlaceLento = navigator.connection && (["slow-2g", "2g"].includes(tipo) || (Number(navigator.connection.downlink) > 0 && Number(navigator.connection.downlink) < 0.5));
         if (!navigator.onLine) {
-            aviso.textContent = "Sin conexión a Internet. Algunas acciones no se guardarán hasta que vuelva la conexión.";
-            aviso.hidden = false;
+            textoAviso.textContent = "Sin conexión a Internet. Algunas acciones pueden no guardarse.";
+            aviso.hidden = cerradoPorUsuario;
             aviso.classList.add("sin-conexion");
         } else if (enlaceLento) {
-            aviso.textContent = "La conexión parece lenta. Algunas acciones pueden tardar; espera a que terminen antes de volver a intentarlo.";
-            aviso.hidden = false;
+            textoAviso.textContent = "La conexión está lenta. Espera a que termine cada acción antes de volver a intentarlo.";
+            aviso.hidden = cerradoPorUsuario;
             aviso.classList.remove("sin-conexion");
         } else {
             aviso.hidden = true;
@@ -349,8 +356,9 @@ function iniciarAvisoConectividad() {
     };
     window.addEventListener("offline", revisar);
     window.addEventListener("online", () => {
+        cerradoPorUsuario = false;
         revisar();
-        aviso.textContent = "Conexión restablecida. Ya puedes volver a intentarlo.";
+        textoAviso.textContent = "Conexión restablecida. Ya puedes volver a intentarlo.";
         aviso.hidden = false;
         aviso.classList.remove("sin-conexion");
         setTimeout(() => { if (navigator.onLine) aviso.hidden = true; }, 5000);
@@ -415,7 +423,8 @@ function mensajeErrorAmigable(error, mensajePredeterminado) {
     if (/email address not authorized/i.test(detalle)) return es ? "No pudimos enviar el correo de confirmación. Inténtalo más tarde o usa otro método de acceso." : "We couldn't send the confirmation email. Try again later or use another sign-in method.";
     if (/phone.*(?:sign.?ups?|logins?|provider).*disabled|phone.*disabled|disabled.*phone/i.test(detalle)) return es ? "El acceso con celular aún no está disponible. Por ahora, intenta entrar con correo." : "Phone sign-in isn't available yet. Please use email for now.";
     if (/rate limit|too many requests/i.test(detalle)) return es ? "Se solicitaron demasiados intentos seguidos. Espera un momento y vuelve a intentarlo." : "There were too many attempts. Wait a moment and try again.";
-    if (/expired|invalid.*token|token.*invalid|recovery.*(session|link)|session.*missing|enlace de recuperaci[oó]n/i.test(detalle)) return es ? "Este enlace de recuperación venció o ya se utilizó. Solicita uno nuevo y ábrelo una sola vez." : "This recovery link has expired or was already used. Request a new link and open it once.";
+    if (/recovery.*(session|link|token)|session.*missing|enlace de recuperaci[oó]n|token de recuperaci[oó]n/i.test(detalle)) return es ? "Este enlace de recuperación venció o ya se utilizó. Solicita uno nuevo desde Iniciar sesión." : "This recovery link has expired or was already used. Request a new one from Sign in.";
+    if (/expired|invalid.*token|token.*invalid|refresh token.*(not found|invalid)|session.*(expired|missing)|invalid.*jwt/i.test(detalle)) return es ? "Tu sesión de acceso venció o ya no es válida. Inicia sesión de nuevo y vuelve a intentarlo." : "Your sign-in session expired or is no longer valid. Sign in again and try once more.";
     if (/file size|maximum allowed size|payload too large|entity too large|413/i.test(detalle)) return es ? "La imagen supera el límite de 5 MB. Elige otra foto o reduce su tamaño antes de volver a subirla." : "The image exceeds the 5 MB limit. Choose another photo or reduce its size before uploading again.";
     if (/image_url.*schema cache|column.*image_url/i.test(detalle)) {
         return es ? "No pudimos guardar la imagen. Inténtalo de nuevo más tarde." : "We couldn't save the image. Please try again later.";
@@ -712,8 +721,13 @@ function rutaInstitucion() {
     return `${base}/pages/institucion.html` || "/pages/institucion.html";
 }
 
-function rutaPortalInstitucion() {
-    return estaEnPages() ? "portal-institucion.html" : "pages/portal-institucion.html";
+function rutaDespuesDeAutenticacionAbsoluta() {
+    const volver = new URLSearchParams(window.location.search).get("volver");
+    if (volver !== "portal-institucion.html") return new URL(rutaApp(), window.location.href).href;
+    const path = window.location.pathname;
+    const indicePages = path.lastIndexOf("/pages/");
+    const base = indicePages >= 0 ? path.slice(0, indicePages) : path.replace(/\/[^/]*$/, "");
+    return `${window.location.origin}${base}/pages/portal-institucion.html`;
 }
 
 function rutaLoginAbsoluta() {
@@ -721,11 +735,14 @@ function rutaLoginAbsoluta() {
     const base = window.location.origin;
     const path = window.location.pathname;
 
-    if (path.includes("/pages/")) {
-        return `${base}${path.substring(0, path.indexOf("/pages/"))}/pages/login.html`;
+    const basePagina = path.includes("/pages/")
+        ? path.substring(0, path.indexOf("/pages/"))
+        : path.replace(/\/[^/]*$/, "");
+    const destino = new URL(`${base}${basePagina}/pages/login.html`);
+    if (new URLSearchParams(window.location.search).get("volver") === "portal-institucion.html") {
+        destino.searchParams.set("volver", "portal-institucion.html");
     }
-
-    return `${base}/pages/login.html`;
+    return destino.href;
 }
 
 function rutaApp() {
@@ -851,9 +868,13 @@ async function iniciarConGoogle(contexto = "login") {
     try {
         if (perfilPendiente) sessionStorage.setItem("ecoreto_google_perfil_pendiente", JSON.stringify(perfilPendiente));
         const supabase = await obtenerCliente();
+        const destinoLogin = new URL(rutaLoginAbsoluta());
+        if (new URLSearchParams(window.location.search).get("volver") === "portal-institucion.html") {
+            destinoLogin.searchParams.set("volver", "portal-institucion.html");
+        }
         const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
-            options: { redirectTo: rutaLoginAbsoluta() }
+            options: { redirectTo: destinoLogin.href }
         });
         if (error) throw error;
     } catch (error) {
@@ -903,7 +924,7 @@ async function procesarRetornoOAuth() {
         }
         sessionStorage.removeItem("ecoreto_google_perfil_pendiente");
         if (!await asegurarPerfil(usuario)) throw new Error("No se pudo preparar el perfil después del acceso con Google.");
-        window.location.replace(usuario.user_metadata?.account_type === "institution" ? rutaPortalInstitucion() : rutaApp());
+        window.location.replace(rutaDespuesDeAutenticacionAbsoluta());
     } catch (error) {
         console.error("No se pudo terminar el acceso con Google:", error);
         const estado = document.getElementById("estadoRegistro") || document.getElementById("estadoGoogleLogin");
@@ -1194,9 +1215,7 @@ async function iniciarSesion() {
         }
 
         await asegurarPerfil(data.user);
-        window.location.href = data.user.user_metadata?.account_type === "institution"
-            ? rutaPortalInstitucion()
-            : rutaApp();
+        window.location.href = rutaDespuesDeAutenticacionAbsoluta();
 
     } catch (error) {
         console.error("Error al iniciar sesión:", error);
@@ -1364,7 +1383,10 @@ async function guardarNuevaPassword() {
         window.location.replace(rutaLogin());
     } catch (error) {
         console.error("Error al actualizar la contraseña:", error);
-        if (estado) estado.textContent = mensajeErrorAmigable(error, "No se pudo guardar la contraseña. Comprueba que el enlace no haya vencido y vuelve a intentarlo.");
+        const detalle = String(error?.message || "");
+        if (estado) estado.textContent = /expired|invalid.*token|token.*invalid|otp_expired|invalid_grant|recovery/i.test(detalle)
+            ? "Este enlace para cambiar la contraseña venció o ya se utilizó. Vuelve a Iniciar sesión y solicita un enlace nuevo."
+            : mensajeErrorAmigable(error, "No se pudo guardar la contraseña. Comprueba que el enlace no haya vencido y vuelve a intentarlo.");
         if (boton) { boton.disabled = false; boton.textContent = "Guardar contraseña nueva"; }
     }
 }
@@ -1544,10 +1566,10 @@ async function unirseRankingInstitucional() {
         let mensaje = mensajeErrorAmigable(error, "No pudimos completar la entrada al ranking. Revisa el código e inténtalo de nuevo.");
         if (String(error?.code || "") === "54000" || /cinco rankings privados/i.test(detalle)) {
             mensaje = "Ya participas en cinco rankings privados activos. Entra a uno desde el selector y usa “Salir de este ranking” para aceptar este código.";
-        } else if (/No encontramos una institución aprobada con ese código/i.test(detalle)) {
+        } else if (/No encontramos (?:una institución aprobada|un ranking activo) con ese código/i.test(detalle)) {
             mensaje = "No encontramos un ranking activo con ese código. Comprueba que lo copiaste completo y que corresponde a esta institución.";
-        } else if (/ecoreto_unirse_ranking|schema cache|PGRST202/i.test(detalle)) {
-            mensaje = "Falta actualizar la validación de códigos. Ejecuta la versión actual de supabase/setup.sql y vuelve a intentarlo.";
+        } else if (/ecoreto_unirse_ranking|schema cache|PGRST202|42804|return type/i.test(detalle)) {
+            mensaje = "No pudimos validar el código ahora. Inténtalo de nuevo más tarde; si sigue ocurriendo, avisa al equipo de EcoReto.";
         }
         if (estado) estado.textContent = mensaje;
     }
@@ -1590,9 +1612,11 @@ async function enviarSolicitudInstitucion() {
         const supabase = await obtenerCliente();
         const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
         if (errorUsuario) throw errorUsuario;
-        if (!user || user.user_metadata?.account_type !== "institution") {
-            throw new Error("Inicia sesión con tu cuenta institucional antes de solicitar un ranking.");
+        if (!user) throw new Error("Inicia sesión para solicitar el ranking.");
+        if (String(user.email || "").trim().toLowerCase() !== String(valores.p_institutional_email || "").trim().toLowerCase()) {
+            throw new Error("Usa la misma cuenta de EcoReto que tiene confirmado el correo institucional escrito arriba.");
         }
+        if (!user.email_confirmed_at) throw new Error("Primero confirma el correo de tu cuenta EcoReto. Después vuelve aquí para enviar la solicitud.");
         const { data: applicationId, error } = await supabase.rpc("ecoreto_solicitar_institucion", valores);
         if (error) throw error;
         document.getElementById("formularioInstitucion")?.reset();
@@ -1616,14 +1640,23 @@ async function enviarSolicitudInstitucion() {
             return;
         }
         console.error("No se pudo enviar la solicitud institucional:", error);
-        if (estado) { estado.className = "registro-ranking-estado error"; estado.textContent = mensajeErrorAmigable(error, "No pudimos recibir la solicitud en este momento. Inténtalo más tarde; si ya la enviaste, no hace falta repetirla."); }
+        if (estado) {
+            estado.className = "registro-ranking-estado error";
+            const mensaje = mensajeErrorAmigable(error, "No pudimos recibir la solicitud en este momento. Inténtalo más tarde; si ya la enviaste, no hace falta repetirla.");
+            estado.textContent = /enlace de recuperación venció|solicita uno nuevo desde iniciar sesión/i.test(mensaje)
+                ? "Inicia sesión con la cuenta de EcoReto que usa el mismo correo institucional del formulario y vuelve a intentarlo."
+                : mensaje;
+        }
     } finally { if (boton) boton.disabled = false; }
 }
 
 async function notificarSolicitudInstitucion(supabase, applicationId, kind) {
     try {
-        const { error } = await supabase.functions.invoke("notificar-institucion", { body: { application_id: applicationId, kind } });
-        return error || null;
+        const { data, error } = await supabase.functions.invoke("notificar-institucion", { body: { application_id: applicationId, kind } });
+        if (error) return error;
+        if (data?.error) return new Error(String(data.error));
+        if (data?.sent !== true) return new Error("El servicio no confirmó el envío del correo.");
+        return null;
     } catch (error) {
         console.error("No se pudo solicitar el correo institucional:", error);
         return error;
@@ -1822,7 +1855,7 @@ function mostrarAccesoDemo(seccion) {
         '<div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:24px;">' +
         '<a class="botonPrincipal" href="' + rutaLogin() + '">Iniciar sesión</a>' +
         '<a class="botonPrincipal" href="' + rutaRegistro() + '" style="background:#fff;color:#286847;border:1px solid #cfe2d1;">Crear cuenta</a></div>' +
-        (seccion === "ranking" ? '<a class="enlace-institucion enlace-institucion-ranking" href="' + rutaInstitucion() + '">Tengo un código o represento una institución →</a>' : '') +
+        (seccion === "ranking" ? '<a class="enlace-institucion enlace-institucion-ranking" href="' + rutaInstitucion() + '">Entrar con código o solicitar un ranking →</a>' : '') +
         '<button type="button" class="btn-secundario" style="margin-top:18px;" onclick="mostrarSeccion(\'inicio\')">Seguir explorando</button></section>';
 }
 
@@ -1969,6 +2002,10 @@ function mostrarPaginaInformativa(seccion) {
         : `<section class="paginaInterna pagina-informativa pagina-contacto">
             <span class="etiqueta">ESTAMOS PARA AYUDAR</span><h1>¿Necesitas ayuda? 🌿</h1>
             <p>Cuéntanos qué ocurrió desde el botón de ayuda. Describe los pasos que seguiste y el mensaje que apareció; el equipo podrá revisar tu reporte.</p>
+            <div class="contacto-enlaces" aria-label="Contactos de EcoReto">
+                <a href="https://www.instagram.com/soy_ecoreto/" target="_blank" rel="noopener noreferrer" aria-label="Abrir Instagram de EcoReto">Instagram <strong>@soy_ecoreto</strong></a>
+                <a href="https://mail.google.com/mail/?view=cm&amp;fs=1&amp;to=ecoreto.contac%40gmail.com" target="_blank" rel="noopener noreferrer" aria-label="Escribir a EcoReto en Gmail">Escribir por Gmail <strong>ecoreto.contac@gmail.com</strong></a>
+            </div>
             <div class="contacto-acciones"><button type="button" class="botonPrincipal" onclick="abrirAyuda()">Abrir ayuda</button><button type="button" class="btn-secundario" onclick="mostrarSeccion('inicio')">Volver al inicio</button></div>
           </section>`;
     seccionActual = seccion;
@@ -2562,7 +2599,7 @@ async function mostrarRanking() {
                             ${ultimoCodigoRankingAmigos ? `<p class="ranking-codigo-creado" role="status">Código de tu grupo: <strong id="codigoRankingAmigos">${escaparHTML(ultimoCodigoRankingAmigos)}</strong> <button type="button" onclick="copiarCodigoRankingAmigos()">Copiar código</button></p>` : ""}
                             <form class="ranking-unirse-amigos" onsubmit="event.preventDefault(); unirseRankingAmigos();"><label for="codigoRankingAmigosEntrada">Unirme a un grupo</label><div><input id="codigoRankingAmigosEntrada" required maxlength="40" placeholder="Código del grupo"><button type="submit">Unirme</button></div></form><p id="estadoUnirseRankingAmigos" role="status" aria-live="polite"></p>
                         </section>
-                        <section class="ranking-opciones-institucion"><div><h2>Ranking institucional</h2><p>Entra como estudiante con el código de tu colegio o solicita un ranking institucional.</p></div><a class="enlace-institucion enlace-institucion-ranking" href="${rutaInstitucion()}">Opciones institucionales →</a></section>
+                        <section class="ranking-opciones-institucion"><div><h2>Ranking institucional</h2><p>Entra con el código de tu institución o solicita crear un ranking para tu comunidad.</p></div><a class="enlace-institucion enlace-institucion-ranking" href="${rutaInstitucion()}">Solicitar un ranking institucional →</a></section>
                     </div>
                 </details>
                 ${ultimaInvitacionCreada ? `<p class="ranking-codigo-creado" role="status">Código de la competición que acabas de crear: <strong id="codigoCompetenciaCreada">${escaparHTML(ultimaInvitacionCreada)}</strong>. <button type="button" onclick="copiarCodigoCompetencia()">Copiar código</button></p>` : ""}
@@ -3525,105 +3562,54 @@ function inicializarSelectorPaisPerfil(paisGuardado = "") {
    PERFIL Y PANEL DE INSTITUCIONES
    ========================================================= */
 
-function cambiarModoPortalInstitucional(modo) {
-    const crear = modo === "crear";
-    const camposCrear = document.getElementById("portalCamposCrear");
-    const camposEntrar = document.getElementById("portalCamposEntrar");
-    const password = document.getElementById("portalPasswordInstitucional");
-    const confirmar = document.getElementById("portalConfirmarPasswordInstitucional");
-    const passwordAcceso = document.getElementById("portalPasswordAccesoInstitucional");
-    const boton = document.getElementById("portalBotonEnviar");
-    const tabEntrar = document.getElementById("portalTabEntrar");
-    const tabCrear = document.getElementById("portalTabCrear");
-    if (!camposCrear || !camposEntrar || !boton) return;
-    camposCrear.hidden = !crear;
-    camposEntrar.hidden = crear;
-    password.required = crear;
-    confirmar.required = crear;
-    passwordAcceso.required = !crear;
-    boton.textContent = crear ? "Crear cuenta institucional" : "Iniciar sesión";
-    tabEntrar?.classList.toggle("activo", !crear);
-    tabCrear?.classList.toggle("activo", crear);
-    tabEntrar?.setAttribute("aria-pressed", String(!crear));
-    tabCrear?.setAttribute("aria-pressed", String(crear));
-}
-
 function mostrarEstadoPortalInstitucional(texto, tipo = "") {
     const estado = document.getElementById("portalEstadoInstitucional");
     if (!estado) return;
     estado.className = `registro-ranking-estado ${tipo}`.trim();
     estado.textContent = texto;
-}
-
-async function enviarFormularioPortalInstitucional() {
-    const modo = document.getElementById("portalCamposCrear")?.hidden ? "entrar" : "crear";
-    const correo = document.getElementById("portalCorreoInstitucional")?.value.trim().toLowerCase() || "";
-    const password = modo === "crear"
-        ? document.getElementById("portalPasswordInstitucional")?.value || ""
-        : document.getElementById("portalPasswordAccesoInstitucional")?.value || "";
-    if (!correo || !password) return;
-    if (modo === "crear") {
-        const confirmar = document.getElementById("portalConfirmarPasswordInstitucional")?.value || "";
-        if (password.length < 6) { mostrarEstadoPortalInstitucional("La contraseña debe tener al menos 6 caracteres.", "error"); return; }
-        if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) { mostrarEstadoPortalInstitucional("Usa al menos 6 caracteres y combina letras con números.", "error"); return; }
-        if (password !== confirmar) { mostrarEstadoPortalInstitucional("Las contraseñas no coinciden. Revísalas e inténtalo de nuevo.", "error"); return; }
-    }
-
-    const boton = document.getElementById("portalBotonEnviar");
-    if (boton) boton.disabled = true;
-    mostrarEstadoPortalInstitucional(modo === "crear" ? "Creando tu cuenta institucional…" : "Iniciando sesión…", "comprobando");
-    try {
-        const supabase = await obtenerCliente();
-        if (modo === "crear") {
-            const { data, error } = await supabase.auth.signUp({
-                email: correo,
-                password,
-                options: {
-                    // Usa el destino de autenticación ya permitido en Supabase;
-                    // el retorno detecta account_type y abre el portal propio.
-                    emailRedirectTo: rutaLoginAbsoluta(),
-                    data: { username: `Institucion-${crearUUIDEcoReto().slice(0, 8)}`, account_type: "institution" }
-                }
-            });
-            if (error) throw error;
-            if (!data.session) {
-                mostrarEstadoPortalInstitucional("Revisa tu correo y confirma la dirección desde el mensaje de EcoReto. Después vuelve aquí e inicia sesión para solicitar el ranking de tu institución.", "disponible");
-                return;
-            }
-        } else {
-            const { error } = await supabase.auth.signInWithPassword({ email: correo, password });
-            if (error) throw error;
-        }
-        await cargarPanelInstitucional();
-    } catch (error) {
-        console.error("No se pudo abrir el perfil institucional:", error);
-        const detalle = String(error?.message || "");
-        const texto = /already registered|already exists|user already/i.test(detalle)
-            ? "Ya existe una cuenta con ese correo. Elige “Iniciar sesión institucional”."
-            : mensajeErrorAmigable(error, "No pudimos crear el acceso. Revisa el correo y vuelve a intentarlo.");
-        mostrarEstadoPortalInstitucional(texto, "error");
-    } finally {
-        if (boton) boton.disabled = false;
-    }
+    estado.hidden = !texto;
 }
 
 async function cargarPanelInstitucional() {
     const acceso = document.getElementById("portalAccesoInstitucional");
     const panel = document.getElementById("portalPanelInstitucional");
-    if (!acceso || !panel) return;
-    mostrarEstadoPortalInstitucional("Revisando tu cuenta institucional…", "comprobando");
+    const solicitud = document.getElementById("portalSolicitudRanking");
+    let correoSesionActual = "";
+    let estadoSolicitud = null;
+    if (!acceso || !panel || !solicitud) return;
+    acceso.hidden = true;
+    panel.hidden = true;
+    solicitud.hidden = true;
+    mostrarEstadoPortalInstitucional("Revisando tu cuenta EcoReto…", "comprobando");
     try {
         const supabase = await obtenerCliente();
         const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
         if (errorUsuario) throw errorUsuario;
-        if (!user || user.user_metadata?.account_type !== "institution") {
-            document.getElementById("portalSolicitudRanking").hidden = true;
-            document.getElementById("portalCambiarCuenta").hidden = false;
-            mostrarEstadoPortalInstitucional("Esta es una cuenta personal. Cierra sesión y crea o inicia sesión con una cuenta institucional para continuar.", "error");
+        if (!user) {
+            acceso.hidden = false;
+            mostrarEstadoPortalInstitucional("", "");
             return;
         }
+        correoSesionActual = String(user.email || "").trim();
         const correoCuenta = document.getElementById("institucionCorreo");
-        if (correoCuenta && !correoCuenta.value) correoCuenta.value = user.email || "";
+        if (correoCuenta) correoCuenta.value = correoSesionActual;
+        const { data: solicitudes, error: errorSolicitud } = await supabase.rpc("ecoreto_estado_solicitud_institucion");
+        if (errorSolicitud) throw errorSolicitud;
+        estadoSolicitud = solicitudes?.[0] || null;
+        if (estadoSolicitud?.application_status === "pending") {
+            acceso.hidden = true;
+            solicitud.hidden = true;
+            mostrarEstadoPortalInstitucional(`Recibimos la solicitud de ${estadoSolicitud.institution_name}. Está pendiente de revisión; podrás ver aquí la respuesta cuando el equipo la revise.`, "disponible");
+            return;
+        }
+        if (estadoSolicitud?.application_status === "rejected") {
+            acceso.hidden = true;
+            solicitud.hidden = false;
+            const nota = String(estadoSolicitud.review_note || "").trim();
+            mostrarEstadoPortalInstitucional(`La solicitud de ${estadoSolicitud.institution_name} no fue aprobada.${nota ? ` Motivo: ${nota}` : " Puedes enviar una nueva solicitud con la información actualizada."}`, "error");
+            if (window.location.hash === "#solicitar-ranking") solicitud.scrollIntoView({ behavior: "smooth" });
+            return;
+        }
         const { error: errorVinculo } = await supabase.rpc("ecoreto_vincular_portal_institucional");
         if (errorVinculo) throw errorVinculo;
         const { data, error } = await supabase.rpc("ecoreto_panel_institucional");
@@ -3631,13 +3617,17 @@ async function cargarPanelInstitucional() {
         const filas = data || [];
         if (!filas.length || !filas.some(fila => fila.institution_name)) {
             acceso.hidden = true;
-            document.getElementById("portalSolicitudRanking").hidden = false;
-            mostrarEstadoPortalInstitucional("Tu cuenta institucional ya está lista. Desde aquí puedes solicitar el ranking. Si ya enviaste una solicitud, espera la respuesta del equipo antes de volver a enviarla.", "disponible");
-            if (window.location.hash === "#solicitar-ranking") document.getElementById("portalSolicitudRanking").scrollIntoView({ behavior: "smooth" });
+            solicitud.hidden = false;
+            if (estadoSolicitud?.application_status === "approved") {
+                mostrarEstadoPortalInstitucional(`Aprobamos la solicitud de ${estadoSolicitud.institution_name}. Código para estudiantes: ${estadoSolicitud.invite_code || "consulta el correo de la institución"}. Estamos preparando el panel; vuelve a intentarlo en un momento.`, "disponible");
+                solicitud.hidden = true;
+            } else {
+                mostrarEstadoPortalInstitucional("Tu cuenta está lista. Completa el formulario para solicitar un ranking institucional.", "disponible");
+            }
+            if (window.location.hash === "#solicitar-ranking") solicitud.scrollIntoView({ behavior: "smooth" });
             return;
         }
-        document.getElementById("portalSolicitudRanking").hidden = true;
-        document.getElementById("portalCambiarCuenta").hidden = true;
+        solicitud.hidden = true;
 
         const grupos = new Map();
         for (const fila of filas) {
@@ -3652,7 +3642,7 @@ async function cargarPanelInstitucional() {
             if (errorRetos) throw errorRetos;
             retosPorRanking.set(clave, retos || []);
         }));
-        panel.innerHTML = `<div class="portal-panel-cabecera"><div><span class="etiqueta">PANEL INSTITUCIONAL</span><h2>Avance de tu comunidad</h2></div><button type="button" class="btn-secundario" onclick="cerrarSesionPortalInstitucional()">Cerrar sesión</button></div>${[...grupos.values()].map(({ info, estudiantes }) => {
+        panel.innerHTML = `<div class="portal-panel-cabecera"><div><span class="etiqueta">RANKING INSTITUCIONAL</span><h2>Avance de tu comunidad</h2></div><a class="btn-secundario" href="../app.html?demo=1&amp;vista=ranking">Volver a EcoReto</a></div>${[...grupos.values()].map(({ info, estudiantes }) => {
             const clave = info.competition_id || `${info.institution_name}|${info.invite_code}`;
             const puntosTotales = estudiantes.reduce((total, estudiante) => total + (Number(estudiante.points) || 0), 0);
             const accionesTotales = estudiantes.reduce((total, estudiante) => total + (Number(estudiante.total_actions) || 0), 0);
@@ -3667,20 +3657,35 @@ async function cargarPanelInstitucional() {
         acceso.hidden = true;
         panel.hidden = false;
     } catch (error) {
-        console.error("No se pudo cargar el panel institucional:", error);
+        console.error("No se pudo cargar el panel institucional:", {
+            status: error?.status || error?.context?.status || null,
+            code: error?.code || "",
+            message: error?.message || String(error),
+            details: error?.details || "",
+            hint: error?.hint || ""
+        });
         const detalle = `${error?.code || ""} ${error?.message || ""} ${error?.details || ""} ${error?.hint || ""}`;
         if (/confirma el correo institucional/i.test(detalle)) {
-            mostrarEstadoPortalInstitucional("Primero confirma el correo desde el mensaje que te enviamos y luego entra aquí.", "error");
+            mostrarEstadoPortalInstitucional("Confirma el correo de tu cuenta EcoReto. Cuando el equipo apruebe la solicitud, usa esa misma cuenta para administrar el ranking.", "error");
+        } else if (estadoSolicitud?.application_status === "approved") {
+            solicitud.hidden = true;
+            mostrarEstadoPortalInstitucional(`La solicitud de ${estadoSolicitud.institution_name} fue aprobada. Código para estudiantes: ${estadoSolicitud.invite_code || "revisa el correo de la institución"}. No pudimos abrir el panel ahora; vuelve a intentarlo más tarde.`, "disponible");
         } else if (/no hay un ranking institucional aprobado|no hay.*instituci[oó]n.*aprobada/i.test(detalle)) {
             acceso.hidden = true;
-            document.getElementById("portalSolicitudRanking").hidden = false;
-            mostrarEstadoPortalInstitucional("Tu cuenta institucional ya está lista. Desde aquí puedes solicitar el ranking. Si ya enviaste una solicitud, espera la respuesta del equipo antes de volver a enviarla.", "disponible");
+            solicitud.hidden = false;
+            const cuenta = correoSesionActual ? ` para ${correoSesionActual}` : " para esta cuenta";
+            mostrarEstadoPortalInstitucional(`No encontramos un ranking aprobado${cuenta}. La solicitud debe estar aprobada y usar este mismo correo confirmado. Si ya la enviaste, espera la revisión.`, "disponible");
         } else if (/PGRST202|schema cache|function .* does not exist|42P01|42703/i.test(detalle)) {
-            mostrarEstadoPortalInstitucional("La cuenta está bien, pero el servicio institucional de EcoReto aún no está configurado en la base de datos. El administrador debe activar las funciones institucionales en Supabase. Después podrás volver a intentarlo.", "error");
+            mostrarEstadoPortalInstitucional("No pudimos abrir el ranking en este momento. Inténtalo de nuevo más tarde; si el problema continúa, contacta al equipo de EcoReto.", "error");
         } else if (/42501|permission denied|row-level security|not authorized/i.test(detalle)) {
-            mostrarEstadoPortalInstitucional("EcoReto no tiene permiso para abrir este perfil. Cierra sesión y vuelve a entrar. Si el mensaje continúa, el administrador debe revisar los permisos institucionales en Supabase.", "error");
+            const cuenta = correoSesionActual ? ` (${correoSesionActual})` : "";
+            mostrarEstadoPortalInstitucional(`La cuenta activa${cuenta} no está vinculada a un ranking institucional aprobado. La solicitud y el correo confirmado deben pertenecer a esta misma cuenta.`, "error");
+        } else if (/23505|duplicate key|unique constraint/i.test(detalle)) {
+            mostrarEstadoPortalInstitucional("No pudimos abrir el ranking con esta cuenta en este momento. Inténtalo de nuevo más tarde; si el problema continúa, contacta al equipo de EcoReto.", "error");
+        } else if (/failed to fetch|network|timeout|load failed/i.test(detalle)) {
+            mostrarEstadoPortalInstitucional("No pudimos conectar con el servicio del ranking. Comprueba que tengas Internet e inténtalo de nuevo.", "error");
         } else {
-            mostrarEstadoPortalInstitucional(mensajeErrorAmigable(error, "No pudimos conectar con el perfil institucional. Revisa tu conexión y vuelve a intentarlo."), "error");
+            mostrarEstadoPortalInstitucional("No pudimos cargar el ranking de tu institución en este momento. Inténtalo de nuevo más tarde. Si el problema continúa, contacta al equipo de EcoReto.", "error");
         }
     }
 }
@@ -3727,30 +3732,22 @@ async function crearRetoInstitucional(competitionId) {
     }
 }
 
-async function cerrarSesionPortalInstitucional() {
-    try { await (await obtenerCliente()).auth.signOut(); }
-    finally {
-        document.getElementById("portalAccesoInstitucional").hidden = false;
-        document.getElementById("portalPanelInstitucional").hidden = true;
-        document.getElementById("portalSolicitudRanking").hidden = true;
-        document.getElementById("portalCambiarCuenta").hidden = true;
-        cambiarModoPortalInstitucional("entrar");
-        mostrarEstadoPortalInstitucional("Cerraste la sesión institucional.", "disponible");
-    }
-}
-
 window.addEventListener("DOMContentLoaded", async () => {
     if (!document.getElementById("portalAccesoInstitucional")) return;
-    cambiarModoPortalInstitucional("entrar");
-    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    if (hash.get("type") === "signup") {
-        mostrarEstadoPortalInstitucional("Tu correo quedó confirmado. Inicia sesión para continuar y solicitar un ranking institucional.", "disponible");
-        window.history.replaceState({}, document.title, `${window.location.pathname}${window.location.search}`);
-    }
+    document.getElementById("portalAccesoInstitucional").hidden = true;
+    document.getElementById("portalSolicitudRanking").hidden = true;
+    document.getElementById("portalPanelInstitucional").hidden = true;
+    mostrarEstadoPortalInstitucional("Comprobando tu sesión…", "comprobando");
     try {
         const { data: { session } } = await (await obtenerCliente()).auth.getSession();
         if (session?.user) await cargarPanelInstitucional();
+        else {
+            document.getElementById("portalAccesoInstitucional").hidden = false;
+            mostrarEstadoPortalInstitucional("", "");
+        }
     } catch (error) {
         console.error("No se pudo revisar la sesión institucional:", error);
+        document.getElementById("portalAccesoInstitucional").hidden = false;
+        mostrarEstadoPortalInstitucional("No pudimos comprobar tu sesión. Revisa la conexión e inténtalo de nuevo.", "error");
     }
 });
