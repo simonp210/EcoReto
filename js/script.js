@@ -2169,7 +2169,7 @@ async function mostrarHistorialCompleto() {
 
         contenido.innerHTML = `
             <section class="paginaInterna historial-completo">
-                <div class="tituloFila">
+                <div class="tituloFila historial-completo-cabecera">
                     <div><span>HISTORIAL DE LA CUENTA</span><h1>Tu historial completo</h1></div>
                     <button type="button" class="botonPrincipal" onclick="mostrarSeccion('inicio')">← Volver a Inicio</button>
                 </div>
@@ -3057,7 +3057,7 @@ async function mostrarRangos() {
     `).join("");
 
     contenido.innerHTML = `
-        <section class="paginaInterna">
+        <section class="paginaInterna pagina-rangos">
             <span class="etiqueta">PROGRESO</span>
             <h1>Tu rango 🏆</h1>
             <p>Avanza con acciones.</p>
@@ -3135,19 +3135,19 @@ async function mostrarRetos() {
         const retoFugazHoy = ventanaRetoFugaz ? [ventanaRetoFugaz.reto] : [];
 
         contenido.innerHTML = `
-            <section class="paginaInterna">
+            <section class="paginaInterna pagina-retos">
                 <span class="etiqueta">DESAFÍOS</span>
                 <h1>Reto Ecológico Activo 🎯</h1>
                 <p>Completa las acciones para sumar puntos y subir de rango.</p>
 
-                <h2 style="margin-top: 25px; color: #ef6c00;">🔥 Reto Fugaz (Tiempo limitado)</h2>
+                <h2 class="titulo-seccion-retos reto-fugaz-titulo">🔥 Reto Fugaz (Tiempo limitado)</h2>
                 <div class="grid-retos">${generarHTMLTarjetas(retoFugazHoy, estaBloqueado, user)}</div>
                 ${ventanaRetoFugaz ? '<div class="cronometro-aviso">⏱️ Este reto termina en <strong id="temporizadorFugaz">--:--:--</strong></div>' : '<p class="mensaje-reto-vacio">No hay retos fugaces activos. Vuelve pronto.</p>'}
 
-                <h2 style="margin-top: 25px; color: #2e7d32;">⚡ Reto del Día</h2>
+                <h2 class="titulo-seccion-retos reto-diario-titulo">⚡ Reto del Día</h2>
                 <div class="grid-retos">${generarHTMLTarjetas(retoDiarioHoy, estaBloqueado, user)}</div>
 
-                <h2 style="margin-top: 35px; color: #1565c0;">📅 Reto de la Semana</h2>
+                <h2 class="titulo-seccion-retos reto-semanal-titulo">📅 Reto de la Semana</h2>
                 <div class="grid-retos">${generarHTMLTarjetas(retoSemanalHoy, estaBloqueado, user)}</div>
 
                 ${retosDeInstitucion.length ? `<h2 class="retos-institucionales-titulo">🏫 Retos de tus instituciones</h2><p class="retos-institucionales-ayuda">Estos retos solo aparecen porque perteneces a esos rankings.</p><div class="grid-retos">${generarHTMLTarjetas(retosDeInstitucion, estaBloqueado, user)}</div>` : ""}
