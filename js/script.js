@@ -3,6 +3,10 @@ const vistasCache = new Map();
 let seccionActual = "inicio";
 let solicitudNavegacion = 0;
 let modoVistaDemo = false;
+let usuarioAppAutenticado = false;
+let autenticacionAppLista = false;
+let resolverAutenticacionApp;
+const promesaAutenticacionApp = new Promise(resolve => { resolverAutenticacionApp = resolve; });
 const selectoresTelefono = new Map();
 const ciudadesPorPais = new Map();
 let solicitudCiudades = 0;
@@ -17,6 +21,12 @@ function crearUUIDEcoReto() {
         const aleatorio = Math.floor(Math.random() * 16);
         return (caracter === "x" ? aleatorio : (aleatorio & 0x3) | 0x8).toString(16);
     });
+}
+
+function marcarAutenticacionAppLista() {
+    if (autenticacionAppLista) return;
+    autenticacionAppLista = true;
+    resolverAutenticacionApp?.();
 }
 
 function instalarAlertasEcoReto() {
@@ -291,6 +301,8 @@ async function inicializarAplicacion() {
         const supabase = await obtenerCliente();
         const { data: { user: usuarioSesion }, error } = await obtenerUsuarioEcoReto(supabase);
         if (error) throw error;
+        usuarioAppAutenticado = Boolean(usuarioSesion);
+        marcarAutenticacionAppLista();
         if (!usuarioSesion) {
             if (new URLSearchParams(window.location.search).get("demo") === "1") {
                 iniciarVistaDemo();
@@ -316,6 +328,14 @@ async function inicializarAplicacion() {
             }
         } catch { /* Abrir el ranking automáticamente es una ayuda opcional. */ }
     } catch (error) {
+        marcarAutenticacionAppLista();
+        const parametros = new URLSearchParams(window.location.search);
+        if (!usuarioAppAutenticado && parametros.get("demo") === "1") {
+            iniciarVistaDemo();
+            const vista = parametros.get("vista");
+            if (["ranking", "retos", "rangos"].includes(vista)) await mostrarSeccion(vista);
+            return;
+        }
         console.error("No se pudo iniciar EcoReto:", error);
         const retos = document.getElementById("retosInicio");
         if (retos) retos.innerHTML = `<article class="retoCard verde retoCardVacio"><div class="retoIcono">⚠️</div><span>ECORETO</span><h3>No pudimos conectar</h3><p>Revisa tu conexión e inténtalo de nuevo.</p><button type="button" onclick="inicializarAplicacion()">Reintentar</button></article>`;
@@ -1866,11 +1886,12 @@ function mostrarAccesoDemo(seccion) {
 
 async function mostrarSeccion(seccion) {
     const solicitudActual = ++solicitudNavegacion;
+    if (!autenticacionAppLista) await promesaAutenticacionApp;
     if (seccion === "nosotros" || seccion === "contacto") {
         mostrarPaginaInformativa(seccion);
         return;
     }
-    if (modoVistaDemo) {
+    if (modoVistaDemo || !usuarioAppAutenticado) {
         actualizarMenuActivo(seccion);
         if (seccion === "inicio") mostrarInicioDemo();
         else if (seccion === "retos") { mostrarRetosDemo(); seccionActual = seccion; }
