@@ -4117,6 +4117,12 @@ body input, body textarea, body [contenteditable="true"] {
     display: none;
 }
 
+.avatar-menu-logo {
+    object-fit: contain;
+    padding: 2px;
+    background: #fff;
+}
+
 .avatar-ranking,
 .avatar-publicacion {
     width: 42px;

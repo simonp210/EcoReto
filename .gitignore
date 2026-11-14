@@ -1,2 +1,5 @@
 .env
 supabase/functions/.env
+Iniciar EcoReto.bat
+servidor-local.js
+servidor-local.ps1

@@ -6,79 +6,28 @@ const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_22HHbWBP2DAKf1cxJbEo1Q_-puOIw_E
 
 let supabaseClient = null;
 let supabaseClientPromise = null;
-let canalIdentidadEcoReto = null;
-let idPestanaEcoReto = null;
+const CLAVE_SESION_ECORETO = "ecoreto-auth";
 
-async function obtenerAlmacenSesionPestana() {
-    // Supabase guarda la sesión en localStorage por defecto y sincroniza los
-    // cambios entre pestañas. EcoReto usa un almacén aislado por pestaña para
-    // que iniciar sesión con otra cuenta no reemplace la sesión al recargar.
-    let idPestana;
+function migrarSesionAnterior() {
     try {
-        const almacenamientoDuradero = window.localStorage;
-        idPestana = window.sessionStorage.getItem("ecoreto_supabase_tab_id");
-        // Si se cerró la última pestaña, recupera su sesión al abrir EcoReto
-        // de nuevo. Si esa pestaña aún está abierta, el canal de identidad
-        // detecta el uso simultáneo y asigna una sesión nueva a esta pestaña.
-        if (!idPestana) idPestana = almacenamientoDuradero.getItem("ecoreto_ultima_pestana_autenticada");
-        if (!idPestana) {
-            idPestana = globalThis.crypto?.randomUUID?.()
-                || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-        }
-        window.sessionStorage.setItem("ecoreto_supabase_tab_id", idPestana);
-        idPestanaEcoReto = idPestana;
-        if ("BroadcastChannel" in window) {
-            canalIdentidadEcoReto = new BroadcastChannel("ecoreto-auth-tab-identity");
-            canalIdentidadEcoReto.onmessage = evento => {
-                const mensaje = evento.data;
-                if (mensaje?.type === "probe" && mensaje.tabId === idPestanaEcoReto) {
-                    canalIdentidadEcoReto.postMessage({ type: "collision", nonce: mensaje.nonce });
-                }
-            };
-            const nonce = globalThis.crypto?.randomUUID?.()
-                || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-            let colision = false;
-            const escucharColision = evento => {
-                if (evento.data?.type === "collision" && evento.data.nonce === nonce) colision = true;
-            };
-            canalIdentidadEcoReto.addEventListener("message", escucharColision);
-            canalIdentidadEcoReto.postMessage({ type: "probe", tabId: idPestana, nonce });
-            await new Promise(resolve => setTimeout(resolve, 100));
-            canalIdentidadEcoReto.removeEventListener("message", escucharColision);
-            if (colision) {
-                // Al duplicar una pestaña, algunos navegadores copian su
-                // sessionStorage. Separa la nueva instancia para que tampoco
-                // comparta el canal de autenticación con la pestaña original.
-                idPestana = globalThis.crypto?.randomUUID?.()
-                    || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-                window.sessionStorage.setItem("ecoreto_supabase_tab_id", idPestana);
-                idPestanaEcoReto = idPestana;
+        const almacenamiento = window.localStorage;
+        if (almacenamiento.getItem(CLAVE_SESION_ECORETO)) return;
+
+        let idPestanaAnterior = null;
+        try { idPestanaAnterior = window.sessionStorage.getItem("ecoreto_supabase_tab_id"); } catch { /* La sesión durable sigue disponible. */ }
+        const idsAnteriores = [
+            idPestanaAnterior,
+            almacenamiento.getItem("ecoreto_ultima_pestana_autenticada")
+        ].filter(Boolean);
+        for (const id of idsAnteriores) {
+            const sesionAnterior = almacenamiento.getItem(`ecoreto-auth-${id}`);
+            if (sesionAnterior) {
+                almacenamiento.setItem(CLAVE_SESION_ECORETO, sesionAnterior);
+                return;
             }
         }
-        const storage = {
-            getItem: key => almacenamientoDuradero.getItem(key),
-            setItem: (key, value) => {
-                almacenamientoDuradero.setItem(key, value);
-                almacenamientoDuradero.setItem("ecoreto_ultima_pestana_autenticada", idPestana);
-            },
-            removeItem: key => almacenamientoDuradero.removeItem(key)
-        };
-        return { storage, storageKey: `ecoreto-auth-${idPestana}` };
     } catch (error) {
-        console.warn("No se pudo acceder al almacenamiento aislado de esta pestaña:", error);
-        // Si el navegador bloquea sessionStorage, no volver al almacenamiento
-        // compartido; así se conserva el aislamiento entre cuentas.
-        const memoria = new Map();
-        const idMemoria = globalThis.crypto?.randomUUID?.()
-            || `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
-        return {
-            storageKey: `ecoreto-auth-${idMemoria}`,
-            storage: {
-                getItem: key => memoria.get(key) ?? null,
-                setItem: (key, value) => memoria.set(key, value),
-                removeItem: key => memoria.delete(key)
-            }
-        };
+        console.warn("No se pudo migrar la sesión guardada anteriormente:", error);
     }
 }
 
@@ -101,11 +50,11 @@ function cargarSupabase() {
             throw new Error("SUPABASE_PUBLISHABLE_KEY no está configurada correctamente en supabase.js.");
         }
 
-        const { storage, storageKey } = await obtenerAlmacenSesionPestana();
+        migrarSesionAnterior();
         supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: {
-                storage,
-                storageKey,
+                storage: window.localStorage,
+                storageKey: CLAVE_SESION_ECORETO,
                 persistSession: true,
                 autoRefreshToken: true,
                 detectSessionInUrl: true
@@ -124,4 +73,24 @@ function cargarSupabase() {
 
 async function obtenerCliente() {
     return cargarSupabase();
+}
+
+// getUser() necesita consultar el servidor. Si se cae Internet, usa la sesión
+// guardada para mantener la cuenta y la interfaz en vez de convertirla en invitado.
+async function obtenerUsuarioEcoReto(cliente) {
+    const { data, error } = await cliente.auth.getSession();
+    if (data?.session?.user) return { data: { user: data.session.user }, error: null };
+
+    const mensajeError = String(error?.message || "");
+    const falloDeRed = !navigator.onLine || /failed to fetch|network|timeout|timed out|load failed/i.test(mensajeError);
+    if (falloDeRed) {
+        try {
+            const sesionGuardada = JSON.parse(window.localStorage.getItem(CLAVE_SESION_ECORETO) || "null");
+            if (sesionGuardada?.user?.id && sesionGuardada?.access_token) {
+                return { data: { user: sesionGuardada.user }, error: null };
+            }
+        } catch { /* Si el almacenamiento falla, se conserva el error normal de sesión. */ }
+    }
+    if (error) return { data: { user: null }, error };
+    return cliente.auth.getUser();
 }

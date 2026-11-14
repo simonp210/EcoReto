@@ -87,7 +87,7 @@ async function seleccionarCursorEcoReto(id) {
     if (!cursor) return;
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorSesion } = await supabase.auth.getUser();
+        const { data: { user }, error: errorSesion } = await obtenerUsuarioEcoReto(supabase);
         if (errorSesion || !user) throw new Error("Inicia sesión para elegir un cursor.");
         const { data: perfil, error: errorPerfil } = await supabase.from("profiles").select("puntos").eq("id", user.id).maybeSingle();
         if (errorPerfil) throw errorPerfil;
@@ -289,9 +289,9 @@ window.addEventListener("DOMContentLoaded", () => {
 async function inicializarAplicacion() {
     try {
         const supabase = await obtenerCliente();
-        const { data: { session }, error } = await supabase.auth.getSession();
+        const { data: { user: usuarioSesion }, error } = await obtenerUsuarioEcoReto(supabase);
         if (error) throw error;
-        if (!session) {
+        if (!usuarioSesion) {
             if (new URLSearchParams(window.location.search).get("demo") === "1") {
                 iniciarVistaDemo();
                 const vista = new URLSearchParams(window.location.search).get("vista");
@@ -452,14 +452,14 @@ async function mensajeErrorFuncionEdge(error, mensajePredeterminado) {
             const cuerpo = await respuesta.clone().json();
             if (typeof cuerpo?.error === "string" && cuerpo.error) {
                 if (/solicitud de revisi[oó]n.*no es v[aá]lida.*consentimiento|falta.*consentimiento/i.test(cuerpo.error)) {
-                    return "El servicio que revisa las fotos aún necesita actualizarse. Esta publicación no se guardó ni sumó puntos. Inténtalo de nuevo cuando el equipo actualice el servicio.";
+                    return "El servicio de puntos automáticos de Supabase está desactualizado. Publica la función verificar-evidencia actualizada y vuelve a intentarlo.";
                 }
                 return cuerpo.error;
             }
         }
     } catch { /* Si no hay cuerpo JSON, mostramos el error traducido habitual. */ }
     if (/failed to send (a )?request to the edge function|failed to fetch|networkerror/i.test(String(error?.message || error || ""))) {
-        return "No pudimos conectar con la revisión de la imagen. Inténtalo de nuevo más tarde.";
+        return "No pudimos conectar con el servicio que registra tus puntos. Inténtalo de nuevo más tarde.";
     }
     return mensajeErrorAmigable(error, mensajePredeterminado);
 }
@@ -511,12 +511,13 @@ function obtenerVentanaRetoFugaz(retos, ahora = Date.now()) {
     return null;
 }
 
-const AVATAR_POR_DEFECTO = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='50' fill='%23e8f5e9'/%3E%3Ctext x='50' y='67' text-anchor='middle' font-size='55'%3E%F0%9F%91%A4%3C/text%3E%3C/svg%3E";
+const AVATAR_POR_DEFECTO = "assets/logo-ecoreto.jpeg?v=20261113b";
 
 function actualizarAvatarMenu(url) {
     const imagen = document.getElementById("avatarMenuImg");
     const inicial = document.getElementById("avatarMenuInicial");
     if (!imagen || !inicial) return;
+    imagen.classList.toggle("avatar-menu-logo", !url);
 
     if (url) {
         imagen.onerror = () => {
@@ -528,9 +529,14 @@ function actualizarAvatarMenu(url) {
         imagen.hidden = false;
         inicial.hidden = true;
     } else {
-        imagen.removeAttribute("src");
-        imagen.hidden = true;
-        inicial.hidden = false;
+        imagen.onerror = () => {
+            imagen.onerror = null;
+            imagen.hidden = true;
+            inicial.hidden = false;
+        };
+        imagen.src = AVATAR_POR_DEFECTO;
+        imagen.hidden = false;
+        inicial.hidden = true;
     }
 
     const imagenHero = document.getElementById("avatarHeroImg");
@@ -919,7 +925,7 @@ async function procesarRetornoOAuth() {
         if (!perfilExistente && perfilPendiente) {
             const { error: errorMetadata } = await supabase.auth.updateUser({ data: perfilPendiente });
             if (errorMetadata) throw errorMetadata;
-            const { data: usuarioActualizado } = await supabase.auth.getUser();
+            const { data: usuarioActualizado } = await obtenerUsuarioEcoReto(supabase);
             usuario = usuarioActualizado?.user || usuario;
         }
         sessionStorage.removeItem("ecoreto_google_perfil_pendiente");
@@ -1448,7 +1454,7 @@ async function verificarSesion() {
 async function cargarUsuario() {
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
 
         if (errorUsuario || !user) return;
 
@@ -1540,7 +1546,7 @@ async function unirseRankingInstitucional() {
     if (!codigo) { if (estado) estado.textContent = "Escribe el código que te dio tu institución."; return; }
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) {
             localStorage.setItem("ecoreto_codigo_institucion_pendiente", codigo);
@@ -1610,7 +1616,7 @@ async function enviarSolicitudInstitucion() {
     if (boton) boton.disabled = true;
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) throw new Error("Inicia sesión para solicitar el ranking.");
         if (String(user.email || "").trim().toLowerCase() !== String(valores.p_institutional_email || "").trim().toLowerCase()) {
@@ -1721,7 +1727,7 @@ async function subirNuevaFoto() {
 
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorSesion } = await supabase.auth.getUser();
+        const { data: { user }, error: errorSesion } = await obtenerUsuarioEcoReto(supabase);
         if (errorSesion || !user) throw new Error("Inicia sesión para cambiar tu foto de perfil.");
 
         const extension = archivo.name.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
@@ -1760,7 +1766,7 @@ async function quitarFotoPerfil() {
     const es = String(navigator.language || "es").toLowerCase().startsWith("es");
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorSesion } = await supabase.auth.getUser();
+        const { data: { user }, error: errorSesion } = await obtenerUsuarioEcoReto(supabase);
         if (errorSesion || !user) throw new Error("Inicia sesión para cambiar tu foto de perfil.");
 
         const { error } = await supabase.from("profiles").update({ avatar_url: null }).eq("id", user.id);
@@ -1794,8 +1800,7 @@ function iniciarVistaDemo() {
     document.body.classList.add("vista-invitado");
     const nombre = document.getElementById("nombreUsuario");
     if (nombre) nombre.textContent = "Invitado";
-    const avatar = document.getElementById("avatarMenuInicial");
-    if (avatar) avatar.textContent = "🌱";
+    actualizarAvatarMenu("");
     const botonPerfil = document.querySelector(".botonPerfil");
     if (botonPerfil) {
         botonPerfil.setAttribute("aria-label", "Acceso de invitado");
@@ -1969,7 +1974,7 @@ async function mostrarSeccion(seccion) {
         await mostrarPerfil();
         if (solicitudActual !== solicitudNavegacion) return;
 
-        const { data: { user } } = await (await obtenerCliente()).auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(await obtenerCliente());
         if (solicitudActual !== solicitudNavegacion) return;
         const btnSesion = document.getElementById("btnSesionPerfil");
         if (btnSesion && !user) {
@@ -2022,7 +2027,7 @@ async function mostrarEstadisticasPersonales() {
     contenido.innerHTML = '<section class="paginaInterna"><p style="text-align:center;">Cargando tus estadísticas…</p></section>';
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorSesion } = await supabase.auth.getUser();
+        const { data: { user }, error: errorSesion } = await obtenerUsuarioEcoReto(supabase);
         if (errorSesion) throw errorSesion;
         if (!user) {
             contenido.innerHTML = '<section class="paginaInterna estadisticas-personales"><h1>Inicia sesión para ver tu actividad</h1><p>Tus puntos, retos completados y publicaciones estarán reunidos aquí.</p><button class="botonPrincipal" onclick="window.location.href=rutaLogin()">Iniciar sesión</button></section>';
@@ -2086,7 +2091,7 @@ async function mostrarHistorialCompleto() {
 
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) {
             contenido.innerHTML = `<section class="paginaInterna"><h2>Inicia sesión para ver tu historial</h2><button class="botonPrincipal" onclick="window.location.href=rutaLogin()">Iniciar sesión</button></section>`;
@@ -2170,7 +2175,7 @@ async function mostrarPublicar() {
     try {
         const supabase = await obtenerCliente();
 
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) {
             contenido.innerHTML = `<section class="paginaInterna"><h2>Inicia sesión para ver tus publicaciones</h2><button class="botonPrincipal" onclick="window.location.href=rutaLogin()">Iniciar sesión</button></section>`;
@@ -2384,7 +2389,7 @@ async function enviarPublicacionConPuntos() {
     let errorVerificacionHttp = false;
     try {
         supabase = await obtenerCliente();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(supabase);
 
         if (!user) {
             alert("Debes iniciar sesión para publicar.");
@@ -2409,14 +2414,14 @@ async function enviarPublicacionConPuntos() {
         imagenUrl = rutaImagen;
         if (!imagenUrl) throw new Error("No se pudo guardar la imagen. Vuelve a seleccionarla e inténtalo otra vez.");
 
-        if (estadoEvidencia) { estadoEvidencia.hidden = false; estadoEvidencia.className = "reto-evidencia-estado cargando"; estadoEvidencia.textContent = "Guardando tu publicación…"; }
+        if (estadoEvidencia) { estadoEvidencia.hidden = false; estadoEvidencia.className = "reto-evidencia-estado cargando"; estadoEvidencia.textContent = "Registrando tu publicación y sus puntos…"; }
         verificacionInvocada = true;
         const { data: revision, error: errorRevision } = await supabase.functions.invoke("verificar-evidencia", {
             body: { type: "publication", image_path: imagenUrl, action_text: valorFinal, submission_id: idEnvioPublicacion }
         });
         if (errorRevision) {
             errorVerificacionHttp = Boolean(errorRevision.context?.status);
-            throw new Error(await mensajeErrorFuncionEdge(errorRevision, "No se pudo revisar la imagen."));
+            throw new Error(await mensajeErrorFuncionEdge(errorRevision, "No se pudo registrar la publicación."));
         }
         if (!revision?.approved) {
             await supabase.storage.from("post-images").remove([rutaImagen]);
@@ -2468,8 +2473,12 @@ async function mostrarRanking() {
         const supabase = await obtenerCliente();
         supabaseRanking = supabase;
 
-        const { data: { user: usuarioActual } } = await supabase.auth.getUser();
+        const { data: { user: usuarioActual } } = await obtenerUsuarioEcoReto(supabase);
         if (!usuarioActual) {
+            if (!navigator.onLine) {
+                contenido.innerHTML = '<section class="paginaInterna"><h1>Sin conexión</h1><p>Tu sesión no se ha cerrado. El ranking volverá a cargar cuando regrese Internet.</p></section>';
+                return;
+            }
             iniciarVistaDemo();
             mostrarAccesoDemo("ranking");
             return;
@@ -2708,7 +2717,7 @@ async function crearRankingAmigos() {
     if (estado) estado.textContent = "Creando tu grupo…";
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) { if (estado) estado.textContent = "Inicia sesión para crear un grupo e invitar a tus amistades."; return; }
         const { data, error } = await supabase.rpc("ecoreto_crear_ranking_amigos", { p_nombre: nombre });
@@ -2745,7 +2754,7 @@ async function unirseRankingAmigos() {
     if (!codigo) { if (estado) estado.textContent = "Escribe el código del grupo."; return; }
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) { if (estado) estado.innerHTML = 'Inicia sesión para unirte a un grupo. <a href="' + rutaLogin() + '">Iniciar sesión</a>'; return; }
         if (estado) estado.textContent = "Validando el código…";
@@ -2905,7 +2914,7 @@ function cerrarAyuda() {
 function responderAyuda(tema) {
     const respuestas = {
         registro: "Para entrar, usa el mismo correo y contraseña con los que creaste tu cuenta. Si olvidaste la contraseña, toca «Olvidé mi contraseña», revisa ese correo y abre el enlace más reciente. Si el enlace ya venció, solicita uno nuevo. Nunca compartas tu contraseña.",
-        puntos: "En Retos, abre una actividad, elige o toma una foto y pulsa «Enviar evidencia». En Publicar, describe la acción, adjunta una foto y pulsa «Publicar». Espera el mensaje de confirmación antes de cerrar la página; cada envío aprobado suma puntos a tu perfil y a los rankings privados a los que ya pertenecías al realizarlo.",
+        puntos: "En Retos, abre una actividad, elige o toma una foto y pulsa «Enviar evidencia». En Publicar, describe la acción, adjunta una foto y pulsa «Publicar». Por ahora, los puntos se registran automáticamente al enviar la evidencia: cada publicación suma 20 puntos y cada reto suma los puntos indicados en su tarjeta.",
         ranking: "En Ranking puedes consultar la clasificación general o elegir un grupo privado al que ya te uniste. Para crear uno con amistades, escribe un nombre y pulsa «Crear grupo»; comparte el código para que se unan. Los puntos del grupo empiezan en cero y cuentan desde que eres integrante.",
         error: "Cuéntanos en qué pantalla estabas, qué botón pulsaste y qué mensaje apareció. Puedes adjuntar una captura. El reporte se guarda para que el equipo lo revise; si el correo de soporte está configurado, también se envía un aviso. No incluyas contraseñas ni información privada."
     };
@@ -2935,7 +2944,7 @@ async function enviarReporteAyuda() {
     let reportePersistido = false;
     try {
         supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) throw new Error("Inicia sesión para enviar un reporte privado al equipo de EcoReto.");
         if (archivo) {
@@ -2984,7 +2993,7 @@ async function mostrarRangos() {
 
     try {
         const supabase = await obtenerCliente();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(supabase);
 
         if (user) {
             const { data: perfil } = await supabase
@@ -3058,7 +3067,7 @@ async function mostrarRetos() {
 
     try {
         const supabase = await obtenerCliente();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(supabase);
 
         // 1. Obtener lista de retos
         const { data: listaRetos, error: errRetos } = await supabase
@@ -3402,7 +3411,7 @@ async function procesarReto(idReto, puntosReto, idElemento) {
     let avisoLento = null;
     try {
         const supabase = await obtenerCliente();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(supabase);
         if (!user) throw new Error("Inicia sesión para completar un reto y guardar su evidencia.");
         if (!await asegurarPerfil(user)) throw new Error("No pudimos preparar tu cuenta para completar el reto. Inténtalo de nuevo en un momento.");
         if (botonEnviar) { botonEnviar.disabled = true; botonEnviar.textContent = "Enviando evidencia…"; }
@@ -3416,14 +3425,14 @@ async function procesarReto(idReto, puntosReto, idElemento) {
         clearTimeout(avisoLento);
         if (errorSubida) throw errorSubida;
 
-        mostrarEstado("Guardando tu evidencia…", "cargando");
+        mostrarEstado("Registrando el reto y sus puntos…", "cargando");
         verificacionInvocada = true;
         const { data: revision, error: errorRevision } = await supabase.functions.invoke("verificar-evidencia", {
             body: { type: "challenge", challenge_id: Number(idReto), image_path: rutaSubida, submission_id: picker._submissionId }
         });
         if (errorRevision) {
             errorVerificacionHttp = Boolean(errorRevision.context?.status);
-            throw new Error(await mensajeErrorFuncionEdge(errorRevision, "No se pudo revisar la imagen."));
+            throw new Error(await mensajeErrorFuncionEdge(errorRevision, "No se pudo registrar el reto."));
         }
         if (!revision?.approved) {
             await supabase.storage.from("post-images").remove([rutaSubida]);
@@ -3432,7 +3441,7 @@ async function procesarReto(idReto, puntosReto, idElemento) {
         }
         rutaSubida = null;
 
-        mostrarEstado(revision.message || "¡Reto validado y completado!", "exito");
+        mostrarEstado(revision.message || "¡Reto completado y puntos registrados!", "exito");
         const imagenPrevia = picker.querySelector(".reto-evidencia-preview img");
         if (imagenPrevia?.dataset.objectUrl) URL.revokeObjectURL(imagenPrevia.dataset.objectUrl);
         alert(revision.message || `¡Reto completado! Ganaste +${Number(puntosReto)} puntos. 🎉`);
@@ -3462,7 +3471,7 @@ async function procesarReto(idReto, puntosReto, idElemento) {
 async function mostrarPerfil() {
     try {
         const supabase = await obtenerCliente();
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await obtenerUsuarioEcoReto(supabase);
         if (!user) return;
 
         // 1. Obtener los datos del perfil actual
@@ -3583,7 +3592,7 @@ async function cargarPanelInstitucional() {
     mostrarEstadoPortalInstitucional("Revisando tu cuenta EcoReto…", "comprobando");
     try {
         const supabase = await obtenerCliente();
-        const { data: { user }, error: errorUsuario } = await supabase.auth.getUser();
+        const { data: { user }, error: errorUsuario } = await obtenerUsuarioEcoReto(supabase);
         if (errorUsuario) throw errorUsuario;
         if (!user) {
             acceso.hidden = false;
